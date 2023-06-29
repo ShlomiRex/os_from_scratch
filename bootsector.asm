@@ -4,21 +4,46 @@
 
 section .text
 Start:
-    mov si, String
-    call PrintString
+    ; mov si, String
+    ; call PrintString
 
-    mov ax, 0x0012
-    call PrintHex
+    ; ; Print new line
+    ; mov al, 0x0D
+    ; call PrintCharacter
+    ; mov al, 0x0A
+    ; call PrintCharacter
+
+    mov ax, 0x9AB7
+    mov bl, 0
+    call Print4Hex
 
     ; End
     cli                                 ;Clear all interrupts, so we don't need to handle them in halt state
     hlt                                 ;Halt the system - wait for next interrupt - but we disabled so its very efficient and not using much CPU%
 
-; Input: AL register, AH register (optional)
-; Output: None
-; Print the hex value of AL register. Example: AL=0x12 will print: 0x12
-; If you want to print prefix '0x' then set AH=0, else set AH=1. Example: AL=0x12, AH=1 will print: 12
-PrintHex:
+Print4Hex:
+    ; Input AX register, BL register (optional)
+    ; Output: None
+    ; Prints the hex value of AX register (4 nibbles). Example: AX=0x1234 will print: 0x1234
+    ; If you want to print prefix '0x' then set BL=0, else set BL=1. Example: AX=0x1234, BL=1 will print: 1234
+    push ax
+
+    shr ax, 8
+    mov ah, bl ; Print prefix according to BL input for first byte
+    call Print2Hex
+
+    ; Print low byte
+    pop ax
+    mov ah, 1 ; Here we don't need to print prefix
+    call Print2Hex
+
+    ret
+
+Print2Hex:
+    ; Input: AL register, AH register (optional)
+    ; Output: None
+    ; Print the hex value of AL register (2 nibbles). Example: AL=0x12 will print: 0x12
+    ; If you want to print prefix '0x' then set AH=0, else set AH=1. Example: AL=0x12, AH=1 will print: 12
     cmp ah, 1
     je .no_prefix
     ; Print hex prefix
@@ -34,20 +59,29 @@ PrintHex:
     call ALToHex
     push ax ; Store for low nibble printing later on
     mov al, ah ; Move high nibble to AL, since the PrintCharacter procedure expects the character in AL
-    add al, 0x30 ; Convert to ASCII. Since nibble is 0-15, we can just add 0x30 to get the ASCII value
+    ; Check if nibble is greater than 0x9. If it does, then we need offset of 0x41 to get 'A' in ASCII. Else, we need offset of 0x30 to get '0' in ASCII.
+    cmp al, 0xA
+    jl .finish
+    add al, 0x7
+    .finish:
+    add al, 0x30
     call PrintCharacter
 
     ; Print low nibble
     pop ax
+    cmp al, 0xA
+    jl .finish2
+    add al, 0x7
+    .finish2:
     add al, 0x30
     call PrintCharacter
 
     ret
 
-; Input: AL register
-; Output: AX register
-; Convert a number in AL to hex nibbles. Example: 256 -> 0xAB. The high nibble (0xA) is stored in AH and the low nibble (0xB) in AL
 ALToHex:
+    ; Input: AL register
+    ; Output: AX register
+    ; Convert a number in AL to hex nibbles. Example: 256 -> 0xAB. The high nibble (0xA) is stored in AH and the low nibble (0xB) in AL
     push ax ; Save AL
     ; Get high nibble of AL, store in DH for later retrieval
     and al, 0xF0
@@ -62,6 +96,7 @@ ALToHex:
     ret
 
 
+
 PrintCharacter:                         ;Procedure to print character on screen
                                         ;Assume that ASCII value is in register AL
     mov ah, 0x0E                        ;Tell BIOS that we need to print one charater on screen.
@@ -71,14 +106,14 @@ PrintCharacter:                         ;Procedure to print character on screen
     ret                                 ;Return to calling procedure
 PrintString:                            ;Procedure to print string on screen
                                         ;Assume that string starting pointer is in register SI
-    next_character:                     ;Lable to fetch next character from string
+    .next_character:                     ;Lable to fetch next character from string
         mov al, [SI]                    ;Get a byte from string and store in AL register
         inc SI                          ;Increment SI pointer
         or AL, AL                       ;Check if value in AL is zero (end of string)
-        jz exit_function                ;If end then return
+        jz .exit_function                ;If end then return
         call PrintCharacter             ;Else print the character which is in AL register
-        jmp next_character              ;Fetch next character from string
-        exit_function:                  ;End label
+        jmp .next_character              ;Fetch next character from string
+        .exit_function:                  ;End label
         ret                             ;Return from procedure
 String db 'Hello World', 0              ;HelloWorld string ending with 0
 
