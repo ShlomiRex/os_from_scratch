@@ -4,17 +4,7 @@
 
 section .text
 Start:
-    ; mov si, String
-    ; call PrintString
-
-    ; ; Print new line
-    ; mov al, 0x0D
-    ; call PrintCharacter
-    ; mov al, 0x0A
-    ; call PrintCharacter
-
-    mov ax, 0x9AB7
-    mov bl, 0
+    mov ax, sp
     call Print4Hex
 
     ; End
@@ -115,6 +105,14 @@ PrintString:                            ;Procedure to print string on screen
         jmp .next_character              ;Fetch next character from string
         .exit_function:                  ;End label
         ret                             ;Return from procedure
+PrintNewLine:
+    ; Print new line
+    mov al, 0x0D
+    call PrintCharacter
+    mov al, 0x0A
+    call PrintCharacter
+
+
 String db 'Hello World', 0              ;HelloWorld string ending with 0
 
 times 510 - ($ - $$) db 0               ;Fill the rest of sector with 0
