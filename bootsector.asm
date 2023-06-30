@@ -5,17 +5,29 @@
 
 section .text
 Start:
-    ; Read second sector (512 bytes)
-    mov ax, 0x1000
-    mov es, ax ; Set ES to 0x1000
 
-    mov ah, 0x02 ; Read from disk
-    mov al, 0x01 ; Number of sectors to be read 
-    mov bx, 0x00 ; Offset address of buffer
-    mov ch, 0x01 ; Track number
-    mov cl, 0x02 ; Sector number
-    mov dh, 0x00 ; Disk side
-    mov dl, 0x00 ; Drive number
+    ; DL stores the current drive number, save in variable
+    mov [BOOT_DRIVE], dl
+
+    ; Initialize the stack
+    mov bp, 0x7C00
+    mov sp, bp
+
+    ; Read second sector (512 bytes)
+    xor ax, ax ; Indirectly set ES to 0
+    mov es, ax
+
+    mov ah, 2 ; Read from disk function
+    mov al, 1 ; Number of sectors to be read 
+    mov ch, 0 ; Cylinder number (we in the sane platter)
+    mov cl, 2 ; Sector number (1-63)
+    mov dh, 0 ; Disk side (top, bottom) / Header
+    mov dl, [BOOT_DRIVE] ; Drive number (floppy)
+
+    ; Drive number = es offset by bx = 0x7e00
+    ; es * 16 + bx = 0 + bx = 0x7e00
+    mov bx, 0x7e00 ; Offset address of buffer
+    
     int 0x13 ; Call BIOS interrupt
     jc .error ; If carry flag is set, then there was an error
     jmp .success ; Else, continue
@@ -24,10 +36,6 @@ Start:
         push ax ; Save error code in AH
         mov si, error_msg ; Set SI to point to error_msg
         call PrintString ; Print error_msg
-        
-        ; Print space
-        mov al, ' '
-        call PrintCharacter
 
         ; Print error code
         pop ax ; Get error code
@@ -39,6 +47,12 @@ Start:
     .success:
         mov si, success_msg ; Set SI to point to success_msg
         call PrintString ; Print success_msg
+
+        call PrintNewLine
+
+        ; Print the second sector
+        mov si, 0x7e00 ; Set SI to point to buffer
+        call PrintString ; Print buffer
 
     .halt:
         ; End
@@ -147,10 +161,11 @@ PrintNewLine:
     call PrintCharacter
     ret
 
+BOOT_DRIVE db 0
 error_msg db 'Error reading from disk, error code: ', 0
 success_msg db 'Successfully read from disk', 0
 
 times 510 - ($ - $$) db 0               ;Fill the rest of sector with 0
 dw 0xAA55                               ;Add boot signature at the end of bootloader
 
-times 512 db 0xFF
+times 512 db 'A'
