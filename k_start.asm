@@ -7,3 +7,7 @@ start:
 
     cli  ; stop interrupts
     hlt ; halt the CPU
+
+ClearScreen:
+    mov ax, 0
+    int 0x10

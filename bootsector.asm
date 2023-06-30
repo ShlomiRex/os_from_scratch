@@ -2,8 +2,17 @@
 [BITS 16]
 [ORG 0x7C00]
 
+
 section .text
 Start:
+    ; Stack Pointer starts at 0x6F00
+    mov ax, sp
+    call Print4Hex
+
+    call PrintNewLine
+
+    ; Stack pointer should be incremented by 2 (since AX=2 bytes) and should be 0x6EFE since it grows downwards (negativly)
+    push ax
     mov ax, sp
     call Print4Hex
 
@@ -111,7 +120,7 @@ PrintNewLine:
     call PrintCharacter
     mov al, 0x0A
     call PrintCharacter
-
+    ret
 
 String db 'Hello World', 0              ;HelloWorld string ending with 0
 
