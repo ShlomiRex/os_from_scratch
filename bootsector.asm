@@ -5,20 +5,45 @@
 
 section .text
 Start:
-    ; Stack Pointer starts at 0x6F00
-    mov ax, sp
-    call Print4Hex
+    ; Read second sector (512 bytes)
+    mov ax, 0x1000
+    mov es, ax ; Set ES to 0x1000
 
-    call PrintNewLine
+    mov ah, 0x02 ; Read from disk
+    mov al, 0x01 ; Number of sectors to be read 
+    mov bx, 0x00 ; Offset address of buffer
+    mov ch, 0x01 ; Track number
+    mov cl, 0x02 ; Sector number
+    mov dh, 0x00 ; Disk side
+    mov dl, 0x00 ; Drive number
+    int 0x13 ; Call BIOS interrupt
+    jc .error ; If carry flag is set, then there was an error
+    jmp .success ; Else, continue
 
-    ; Stack pointer should be incremented by 2 (since AX=2 bytes) and should be 0x6EFE since it grows downwards (negativly)
-    push ax
-    mov ax, sp
-    call Print4Hex
+    .error:
+        push ax ; Save error code in AH
+        mov si, error_msg ; Set SI to point to error_msg
+        call PrintString ; Print error_msg
+        
+        ; Print space
+        mov al, ' '
+        call PrintCharacter
 
-    ; End
-    cli                                 ;Clear all interrupts, so we don't need to handle them in halt state
-    hlt                                 ;Halt the system - wait for next interrupt - but we disabled so its very efficient and not using much CPU%
+        ; Print error code
+        pop ax ; Get error code
+        mov al, ah
+        call Print2Hex
+
+        jmp .halt ; Halt the system
+
+    .success:
+        mov si, success_msg ; Set SI to point to success_msg
+        call PrintString ; Print success_msg
+
+    .halt:
+        ; End
+        cli                                 ;Clear all interrupts, so we don't need to handle them in halt state
+        hlt                                 ;Halt the system - wait for next interrupt - but we disabled so its very efficient and not using much CPU%
 
 Print4Hex:
     ; Input AX register, BL register (optional)
@@ -122,7 +147,10 @@ PrintNewLine:
     call PrintCharacter
     ret
 
-String db 'Hello World', 0              ;HelloWorld string ending with 0
+error_msg db 'Error reading from disk, error code: ', 0
+success_msg db 'Successfully read from disk', 0
 
 times 510 - ($ - $$) db 0               ;Fill the rest of sector with 0
 dw 0xAA55                               ;Add boot signature at the end of bootloader
+
+times 512 db 0xFF
