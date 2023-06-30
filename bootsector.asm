@@ -5,7 +5,6 @@
 
 section .text
 Start:
-
     ; DL stores the current drive number, save in variable
     mov [BOOT_DRIVE], dl
 
@@ -59,6 +58,36 @@ Start:
         cli                                 ;Clear all interrupts, so we don't need to handle them in halt state
         hlt                                 ;Halt the system - wait for next interrupt - but we disabled so its very efficient and not using much CPU%
 
+EnterProtectedMode:       ; Enter protected mode
+    cli
+    lgdt [GDT_Descriptor] ; Load GDT
+    mov eax, cr0
+    or eax, 0x1 ; Set protected mode bit
+    mov cr0, eax
+    jmp CODE_SEG:init_pm ; Jump to code segment in protected mode
+
+GDT_Start:          ; Create a global descriptor table
+    null_descriptor:
+        dd 0x0 ; 8 bits of zeros
+        dd 0x0
+    code_descriptor:
+        dw 0xFFFF ; Limit (16 bits)
+        dw 0x0 ; Base (24 bits in total) (16 bits)
+        db 0x0 ; Base (8 bits)
+        db 10011010b ; First 4 bits: present, priviledge, type. Last 4 bits: Type flags
+        db 11001111b ; Other flags (4 bits) + Limit (4 bits)
+        db 0x0 ; Base (8 bits)
+    data_descriptor:
+        dw 0xFFFF ; Limit (16 bits)
+        dw 0x0 ; Base (24 bits in total) (16 bits)
+        db 0x0 ; Base (8 bits)
+        db 10010010b ; First 4 bits: present, priviledge, type. Last 4 bits: Type flags
+        db 11001111b ; Other flags (4 bits) + Limit (4 bits)
+        db 0x0 ; Base (8 bits)
+GDT_End:
+GDT_Descriptor:
+    dw GDT_End - GDT_Start - 1 ; Size of GDT
+    dd GDT_Start ; Start address of GDT
 Print4Hex:
     ; Input AX register, BL register (optional)
     ; Output: None
@@ -161,6 +190,8 @@ PrintNewLine:
     call PrintCharacter
     ret
 
+CODE_SEG equ code_descriptor - GDT_Start
+DATA_SEG equ data_descriptor - GDT_Start
 BOOT_DRIVE db 0
 error_msg db 'Error reading from disk, error code: ', 0
 success_msg db 'Successfully read from disk', 0
