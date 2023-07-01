@@ -2,7 +2,6 @@
 [BITS 16]
 [ORG 0x7C00]
 
-
 section .text
 Start:
     ; DL stores the current drive number, save in variable
@@ -12,87 +11,37 @@ Start:
     mov bp, 0x7C00
     mov sp, bp
 
-    ; Read second sector (512 bytes)
-    xor ax, ax ; Indirectly set ES to 0
-    mov es, ax
+    jmp EnterProtectedMode
 
-    mov ah, 2 ; Read from disk function
-    mov al, 1 ; Number of sectors to be read 
-    mov ch, 0 ; Cylinder number (we in the sane platter)
-    mov cl, 2 ; Sector number (1-63)
-    mov dh, 0 ; Disk side (top, bottom) / Header
-    mov dl, [BOOT_DRIVE] ; Drive number (floppy)
-
-    ; Drive number = es offset by bx = 0x7e00
-    ; es * 16 + bx = 0 + bx = 0x7e00
-    mov bx, 0x7e00 ; Offset address of buffer
-    
-    int 0x13 ; Call BIOS interrupt
-    jc .error ; If carry flag is set, then there was an error
-    jmp .success ; Else, continue
-
-    .error:
-        push ax ; Save error code in AH
-        mov si, error_msg ; Set SI to point to error_msg
-        call PrintString ; Print error_msg
-
-        ; Print error code
-        pop ax ; Get error code
-        mov al, ah
-        call Print2Hex
-
-        jmp .halt ; Halt the system
-
-    .success:
-        mov si, success_msg ; Set SI to point to success_msg
-        call PrintString ; Print success_msg
-
-        call PrintNewLine
-
-        ; Print the second sector
-        mov si, 0x7e00 ; Set SI to point to buffer
-        call PrintString ; Print buffer
-
-    .halt:
-        ; End
-        ;jmp EnterProtectedMode
-        cli                                 ;Clear all interrupts, so we don't need to handle them in halt state
-        hlt                                 ;Halt the system - wait for next interrupt - but we disabled so its very efficient and not using much CPU%
-
-
-; [bits 32]
-; StartInProtectedMode:
-;     cli
-;     hlt
-; EnterProtectedMode:       ; Enter protected mode
-;     cli
-;     lgdt [GDT_Descriptor] ; Load GDT
-;     mov eax, cr0
-;     or eax, 0x1 ; Set protected mode bit
-;     mov cr0, eax
-;     jmp CODE_SEG:StartInProtectedMode ; Jump to code segment in protected mode
-; GDT_Start:          ; Create a global descriptor table
-;     null_descriptor:
-;         dd 0x0 ; 8 bits of zeros
-;         dd 0x0
-;     code_descriptor:
-;         dw 0xFFFF ; Limit (16 bits)
-;         dw 0x0 ; Base (24 bits in total) (16 bits)
-;         db 0x0 ; Base (8 bits)
-;         db 10011010b ; First 4 bits: present, priviledge, type. Last 4 bits: Type flags
-;         db 11001111b ; Other flags (4 bits) + Limit (4 bits)
-;         db 0x0 ; Base (8 bits)
-;     data_descriptor:
-;         dw 0xFFFF ; Limit (16 bits)
-;         dw 0x0 ; Base (24 bits in total) (16 bits)
-;         db 0x0 ; Base (8 bits)
-;         db 10010010b ; First 4 bits: present, priviledge, type. Last 4 bits: Type flags
-;         db 11001111b ; Other flags (4 bits) + Limit (4 bits)
-;         db 0x0 ; Base (8 bits)
-; GDT_End:
-; GDT_Descriptor:
-;     dw GDT_End - GDT_Start - 1 ; Size of GDT
-;     dd GDT_Start ; Start address of GDT
+EnterProtectedMode:       ; Enter protected mode
+    cli
+    lgdt [GDT_Descriptor] ; Load GDT
+    mov eax, cr0
+    or eax, 0x1 ; Set protected mode bit
+    mov cr0, eax
+    jmp CODE_SEG:StartProtectedMode ; Jump to code segment in protected mode
+GDT_Start:          ; Create a global descriptor table
+    null_descriptor:
+        dd 0x0 ; 8 bits of zeros
+        dd 0x0
+    code_descriptor:
+        dw 0xFFFF ; Limit (16 bits)
+        dw 0x0 ; Base (24 bits in total) (16 bits)
+        db 0x0 ; Base (8 bits)
+        db 10011010b ; First 4 bits: present, priviledge, type. Last 4 bits: Type flags
+        db 11001111b ; Other flags (4 bits) + Limit (4 bits)
+        db 0x0 ; Base (8 bits)
+    data_descriptor:
+        dw 0xFFFF ; Limit (16 bits)
+        dw 0x0 ; Base (24 bits in total) (16 bits)
+        db 0x0 ; Base (8 bits)
+        db 10010010b ; First 4 bits: present, priviledge, type. Last 4 bits: Type flags
+        db 11001111b ; Other flags (4 bits) + Limit (4 bits)
+        db 0x0 ; Base (8 bits)
+GDT_End:
+GDT_Descriptor:
+    dw GDT_End - GDT_Start - 1 ; Size of GDT
+    dd GDT_Start ; Start address of GDT
 Print4Hex:
     ; Input AX register, BL register (optional)
     ; Output: None
@@ -195,13 +144,19 @@ PrintNewLine:
     call PrintCharacter
     ret
 
-; CODE_SEG equ code_descriptor - GDT_Start
-; DATA_SEG equ data_descriptor - GDT_Start
+CODE_SEG equ code_descriptor - GDT_Start
+DATA_SEG equ data_descriptor - GDT_Start
 BOOT_DRIVE db 0
 error_msg db 'Error reading from disk, error code: ', 0
 success_msg db 'Successfully read from disk', 0
 
-times 510 - ($ - $$) db 0               ;Fill the rest of sector with 0
-dw 0xAA55                               ;Add boot signature at the end of bootloader
+[BITS 32]
+StartProtectedMode:
+    mov al, 'A'
+    mov ah, 0x0f
+    mov [0xb8000], ax
+    cli
+    hlt
 
-times 512 db 'A'
+times 510 - ($ - $$) db 0
+dw 0xAA55
