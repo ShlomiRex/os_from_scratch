@@ -3,6 +3,7 @@
 [ORG 0x7C00]
 
 section .text
+
 Start:
     ; DL stores the current drive number, save in variable
     mov [BOOT_DRIVE], dl
@@ -11,62 +12,35 @@ Start:
     mov bp, 0x7C00
     mov sp, bp
 
-    ; Enter protected mode
-    cli
-    lgdt [GDT_Descriptor] ; Load GDT
-    mov eax, cr0
-    or eax, 0x1 ; Set protected mode bit
-    mov cr0, eax
-    jmp CODE_SEG:StartProtectedMode ; Jump to code segment in protected mode
+    ; ; Read the kernel
+    ; xor ax, ax
+    ; mov es, ax ; ES:BX is the address where the data will be stored. We don't want to jump in 16 bytes blocks.
 
-GDT_Start:          ; Create a global descriptor table
-    null_descriptor:
-        dd 0x0 ; 8 bits of zeros
-        dd 0x0
-    code_descriptor:
-        dw 0xFFFF ; Limit (16 bits)
-        dw 0x0 ; Base (24 bits in total) (16 bits)
-        db 0x0 ; Base (8 bits)
-        db 10011010b ; First 4 bits: present, priviledge, type. Last 4 bits: Type flags
-        db 11001111b ; Other flags (4 bits) + Limit (4 bits)
-        db 0x0 ; Base (8 bits)
-    data_descriptor:
-        dw 0xFFFF ; Limit (16 bits)
-        dw 0x0 ; Base (24 bits in total) (16 bits)
-        db 0x0 ; Base (8 bits)
-        db 10010010b ; First 4 bits: present, priviledge, type. Last 4 bits: Type flags
-        db 11001111b ; Other flags (4 bits) + Limit (4 bits)
-        db 0x0 ; Base (8 bits)
-GDT_End:
-GDT_Descriptor:
-    dw GDT_End - GDT_Start - 1 ; Size of GDT
-    dd GDT_Start ; Start address of GDT
+    ; mov ah, 2
+    ; mov al, 2 ; number of sectors to read (kernel = 2 sectors = 1024 bytes). We must change that if kernel is bigger.
+    ; mov bx, KERNEL_ADDRESS
+    ; mov ch, 0 ; Cylinder number
+    ; mov cl, 2 ; Sector number
+    ; mov dh, 2 ; Head number TODO: WHY IS IT 2?
+    ; mov dl, [BOOT_DRIVE]
+    ; int 0x13 ; BIOS interrupt call
+    ; jc DiskError ; Jump if carry flag is set (error)
 
-CODE_SEG equ code_descriptor - GDT_Start
-DATA_SEG equ data_descriptor - GDT_Start
+    ; DiskError:
+    ;     mov si, DiskErrorMessage
+    ;     call PrintString
+    ;     cli
+    ;     hlt
+    jmp EnterProtectedMode
+
+%include "pm.asm"
+%include "gdt.asm"
+%include "bios.asm"
+
+
 BOOT_DRIVE db 0
+KERNEL_ADDRESS equ 0x1000 ; Don't start at 0 to avoid overwriting interrupt vector table of the BIOS
 
-[BITS 32]
-StartProtectedMode:
-    ; Initialize segment registers immediately after entering protected mode
-    mov ax, DATA_SEG
-    mov ds, ax
-    mov ss, ax
-    mov es, ax
-    mov fs, ax
-    mov gs, ax
 
-    ; Initialize the stack
-    mov ebp, 0x90000
-    mov esp, ebp
-
-    ; Print 'A' on screen
-    mov al, 'A'
-    mov ah, 0x0f
-    mov [0xb8000], ax
-
-    ; Stop
-    cli
-    hlt
 times 510 - ($ - $$) db 0
 dw 0xAA55
