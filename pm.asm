@@ -1,5 +1,4 @@
 EnterProtectedMode:
-    call ClearScreen
     mov si, enter_pm_msg
     call PrintString
     call PrintNewLine
@@ -26,13 +25,15 @@ StartProtectedMode:
     mov esp, ebp
 
     ; TODO: Remove this 'OK' we do this in kernel in C++ instead
-    ; ; Print 'OK' on second line (VGA memory starts at 0xB8000)
+    ; Print 'OK' on second line (VGA memory starts at 0xB8000)
     ; mov al, 'O'
     ; mov ah, 0x0f
     ; mov [0xb80A0], ax
     ; mov al, 'K'
     ; mov [0xb80A2], ax
 
+    ; cli
+    ; hlt
     jmp KERNEL_ADDRESS
 
 enter_pm_msg db "Entering protected mode...", 0

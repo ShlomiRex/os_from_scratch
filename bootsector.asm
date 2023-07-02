@@ -12,26 +12,42 @@ Start:
     mov bp, 0x7C00
     mov sp, bp
 
-    ; ; Read the kernel
-    ; xor ax, ax
-    ; mov es, ax ; ES:BX is the address where the data will be stored. We don't want to jump in 16 bytes blocks.
+    call ClearScreen
 
-    ; mov ah, 2
-    ; mov al, 2 ; number of sectors to read (kernel = 2 sectors = 1024 bytes). We must change that if kernel is bigger.
-    ; mov bx, KERNEL_ADDRESS
-    ; mov ch, 0 ; Cylinder number
-    ; mov cl, 2 ; Sector number
-    ; mov dh, 2 ; Head number TODO: WHY IS IT 2?
-    ; mov dl, [BOOT_DRIVE]
-    ; int 0x13 ; BIOS interrupt call
-    ; jc DiskError ; Jump if carry flag is set (error)
+    mov SI, hello_msg
+    call PrintString
+    call PrintNewLine
+    
+    ; Read kernel
+    xor ax, ax
+    mov es, ax
+    mov ds, ax
+    
+    mov bx, KERNEL_ADDRESS
+    mov dh, 20
+    mov ah, 2
+    mov al, dh
+    mov ch, 0
+    mov dh, 0
+    mov cl, 2
+    mov dl, [BOOT_DRIVE]
+    int 0x13
+    jc DiskError
+    jmp NoDiskError
 
-    ; DiskError:
-    ;     mov si, DiskErrorMessage
-    ;     call PrintString
-    ;     cli
-    ;     hlt
-    jmp EnterProtectedMode
+    DiskError:
+        mov SI, disk_error_msg
+        call PrintString
+
+        ; Error code
+        mov al, ah
+        mov ah, 0
+        call Print2Hex
+
+        cli
+        hlt
+    NoDiskError:
+        jmp EnterProtectedMode
 
 %include "pm.asm"
 %include "gdt.asm"
@@ -40,7 +56,8 @@ Start:
 
 BOOT_DRIVE db 0
 KERNEL_ADDRESS equ 0x1000 ; Don't start at 0 to avoid overwriting interrupt vector table of the BIOS
-
+hello_msg db "Running in 16-bit real mode...", 0
+disk_error_msg db "Error reading disk, error code: ", 0
 
 times 510 - ($ - $$) db 0
 dw 0xAA55
