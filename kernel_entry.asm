@@ -5,5 +5,4 @@
 [extern main]
 
 call main
-cli
-hlt
+jmp $

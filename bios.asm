@@ -1,10 +1,10 @@
 [BITS 16]
 
 Print4Hex:
-    ; Input AX register, BL register (optional)
+    ; Input AX register, BL register
     ; Output: None
     ; Prints the hex value of AX register (4 nibbles). Example: AX=0x1234 will print: 0x1234
-    ; If you want to print prefix '0x' then set BL=0, else set BL=1. Example: AX=0x1234, BL=1 will print: 1234
+    ; If you don't want to print prefix '0x' then set BL=1, else set BL=0. Example: AX=0x1234, BL=1 will print: 1234
     push ax
 
     shr ax, 8
@@ -19,10 +19,10 @@ Print4Hex:
     ret
 
 Print2Hex:
-    ; Input: AL register, AH register (optional)
+    ; Input: AL register, AH register
     ; Output: None
     ; Print the hex value of AL register (2 nibbles). Example: AL=0x12 will print: 0x12
-    ; If you want to print prefix '0x' then set AH=0, else set AH=1. Example: AL=0x12, AH=1 will print: 12
+    ; If you don't want to print prefix '0x' then set AH=1, else set AH=0. Example: AL=0x12, AH=1 will print: 12
     cmp ah, 1
     je .no_prefix
     ; Print hex prefix

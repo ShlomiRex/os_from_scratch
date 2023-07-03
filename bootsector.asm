@@ -12,13 +12,21 @@ Start:
     mov bp, 0x7C00
     mov sp, bp
 
+    ; Initialize segment registers
+    xor ax, ax
+    mov ds, ax
+    mov es, ax
+    mov fs, ax
+    mov gs, ax
+    mov ss, ax
+
     call ClearScreen
 
     mov SI, hello_msg
     call PrintString
     call PrintNewLine
     
-    ; Read kernel
+    ; Read kernel - read 20 sectors. This might cause issues later, but for now our kernel is less than 10 MegaBytes.
     xor ax, ax
     mov es, ax
     mov ds, ax
@@ -43,9 +51,7 @@ Start:
         mov al, ah
         mov ah, 0
         call Print2Hex
-
-        cli
-        hlt
+        jmp $
     NoDiskError:
         jmp EnterProtectedMode
 

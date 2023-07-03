@@ -1,7 +1,9 @@
-gnu_gcc := "/Users/user/Desktop/my_tools/bin/i686-elf-gcc"
-gnu_ld := "/Users/user/Desktop/my_tools/bin/i686-elf-ld"
+gnu_gcc := "/home/shlomi/my_tools/bin/i686-elf-gcc"
+gnu_ld := "/home/shlomi/my_tools/bin/i686-elf-ld"
 
-all:
+all: compile run
+
+compile:
 # kernel.o
 	$(gnu_gcc) -ffreestanding -m32 -g -c "kernel.cpp" -o "kernel.o"
 # kernel_entry.o
@@ -17,4 +19,6 @@ all:
 # os.bin - everything + zeroes
 	cat "everything.bin" "zeroes.bin" > "os.bin"
 # run
-	qemu-system-x86_64 -drive format=raw,file="os.bin",index=0,if=floppy,  -m 128M
+
+run:
+	qemu-system-x86_64 -drive format=raw,file="os.bin",index=0,if=floppy -m 128M
