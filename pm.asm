@@ -24,6 +24,9 @@ StartProtectedMode:
     mov ebp, 0x90000
     mov esp, ebp
 
+    ; Enable A20 line
+    ;call EnableA20
+
     ; Jump to kernel
     jmp KERNEL_ADDRESS
 
